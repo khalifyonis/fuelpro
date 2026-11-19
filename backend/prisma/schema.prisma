@@ -1,0 +1,1035 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// ENUMS
+// ----------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PumpStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum NozzleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum TankStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DECOMMISSIONED
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSING
+  CLOSED
+  REOPENED
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CARD
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  IN_TRANSIT
+  RECEIVED
+  VERIFIED
+  APPROVED
+  REJECTED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum ApprovalType {
+  DELIVERY
+  EXPENSE
+  PRICE_CHANGE
+  STOCK_ADJUSTMENT
+  PURCHASE_ORDER
+  REFUND
+  SHIFT_REOPEN
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum EquipmentType {
+  PUMP
+  TANK
+  GENERATOR
+  POS_DEVICE
+  PRINTER
+  SENSOR
+  FIRE_EXTINGUISHER
+  OTHER
+}
+
+enum EquipmentStatus {
+  OPERATIONAL
+  FAULTY
+  UNDER_MAINTENANCE
+  DECOMMISSIONED
+}
+
+enum NotificationType {
+  LOW_STOCK
+  TANK_WARNING
+  PUMP_OFFLINE
+  EQUIPMENT_FAULT
+  DELIVERY_VARIANCE
+  CASH_VARIANCE
+  UNCLOSED_SHIFT
+  PENDING_EXPENSE
+  PENDING_APPROVAL
+  PRICE_CHANGE
+  SYSTEM
+}
+
+enum StockMovementType {
+  OPENING
+  SALE
+  DELIVERY
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+  LOSS
+  GAIN
+}
+
+enum TransferStatus {
+  DRAFT
+  DISPATCHED
+  IN_TRANSIT
+  RECEIVED
+  VERIFIED
+  CANCELLED
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  COMPANY
+}
+
+// ----------------------------------------------------
+// MODELS
+// ----------------------------------------------------
+
+model Company {
+  id                 String          @id @default(uuid())
+  name               String
+  registrationNumber String?         @map("registration_number")
+  taxId              String?         @map("tax_id")
+  address            String
+  city               String
+  country            String
+  phone              String
+  email              String
+  logo               String?
+  currency           String          @default("USD")
+  timezone           String          @default("UTC")
+  dateFormat         String          @default("YYYY-MM-DD") @map("date_format")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  branches        Branch[]
+  users           User[]
+  fuelProducts    FuelProduct[]
+  suppliers       Supplier[]
+  purchaseOrders  PurchaseOrder[]
+  customers       Customer[]
+  expenseCategories ExpenseCategory[]
+  systemSettings  SystemSetting[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  code      String   @unique
+  address   String
+  city      String
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userBranchRoles UserBranchRole[]
+  pumps           Pump[]
+  tanks           Tank[]
+  shifts          Shift[]
+  sales           Sale[]
+  payments        Payment[]
+  deliveries      Delivery[]
+  inventoryLedgers InventoryLedger[]
+  stockAdjustments StockAdjustment[]
+  transfersFrom   StockTransfer[]  @relation("TransferFrom")
+  transfersTo     StockTransfer[]  @relation("TransferTo")
+  expenses        Expense[]
+  approvals       Approval[]
+  equipment       Equipment[]
+  safetyChecklists SafetyChecklist[]
+  workOrders      MaintenanceWorkOrder[]
+  fuelPrices      FuelPrice[]
+  purchaseOrders  PurchaseOrder[]
+  customerPayments CustomerPayment[]
+
+  @@map("branches")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  companyId     String     @map("company_id")
+  email         String     @unique
+  username      String     @unique
+  passwordHash  String     @map("password_hash")
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  phone         String?
+  avatar        String?
+  status        UserStatus @default(ACTIVE)
+  lastLoginAt   DateTime?  @map("last_login_at")
+  loginAttempts Int        @default(0) @map("login_attempts")
+  lockedUntil   DateTime?  @map("locked_until")
+  refreshToken  String?    @map("refresh_token")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userBranchRoles UserBranchRole[]
+  shifts          Shift[]
+  sales           Sale[]           @relation("CashierSales")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  permissions     RolePermission[]
+  userBranchRoles UserBranchRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  resource    String
+  action      String
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserBranchRole {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  branchId   String   @map("branch_id")
+  roleId     String   @map("role_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  assignedBy String?  @map("assigned_by")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId, roleId])
+  @@map("user_branch_roles")
+}
+
+model FuelProduct {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  code      String   @unique
+  name      String
+  unit      String   @default("litre")
+  color     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company          Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  prices           FuelPrice[]
+  nozzles          Nozzle[]
+  tanks            Tank[]
+  saleItems        SaleItem[]
+  deliveryItems    DeliveryItem[]
+  inventoryLedgers InventoryLedger[]
+  stockAdjustments StockAdjustment[]
+  stockTransfers   StockTransfer[]
+  poItems          PurchaseOrderItem[]
+
+  @@map("fuel_products")
+}
+
+model FuelPrice {
+  id           String    @id @default(uuid())
+  productId    String    @map("product_id")
+  branchId     String?   @map("branch_id")
+  costPrice    Decimal   @map("cost_price") @db.Decimal(15, 4)
+  sellingPrice Decimal   @map("selling_price") @db.Decimal(15, 4)
+  effectiveFrom DateTime @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+  isApproved   Boolean   @default(false) @map("is_approved")
+  approvedBy   String?   @map("approved_by")
+  approvedAt   DateTime? @map("approved_at")
+  createdBy    String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  product FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch  Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([productId, effectiveFrom])
+  @@map("fuel_prices")
+}
+
+model Pump {
+  id                  String     @id @default(uuid())
+  branchId            String     @map("branch_id")
+  name                String
+  code                String
+  manufacturer        String?
+  model               String?
+  serialNumber        String?    @map("serial_number")
+  status              PumpStatus @default(ACTIVE)
+  installDate         DateTime?  @map("install_date")
+  lastMaintenanceDate DateTime?  @map("last_maintenance_date")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  branch           Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  nozzles          Nozzle[]
+  shiftAssignments ShiftAssignment[]
+  saleItems        SaleItem[]
+
+  @@unique([branchId, code])
+  @@map("pumps")
+}
+
+model Nozzle {
+  id                  String       @id @default(uuid())
+  pumpId              String       @map("pump_id")
+  productId           String       @map("product_id")
+  label               String
+  currentMeterReading Decimal      @default(0) @map("current_meter_reading") @db.Decimal(15, 4)
+  status              NozzleStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  pump      Pump        @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+  product   FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  saleItems SaleItem[]
+
+  @@map("nozzles")
+}
+
+model Tank {
+  id                 String     @id @default(uuid())
+  branchId           String     @map("branch_id")
+  productId          String     @map("product_id")
+  name               String
+  code               String
+  capacity           Decimal    @db.Decimal(15, 4)
+  currentStock       Decimal    @default(0) @map("current_stock") @db.Decimal(15, 4)
+  minimumLevel       Decimal    @default(0) @map("minimum_level") @db.Decimal(15, 4)
+  status             TankStatus @default(ACTIVE)
+  installDate        DateTime?  @map("install_date")
+  lastCalibrationDate DateTime? @map("last_calibration_date")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product       FuelProduct    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  readings      TankReading[]
+  deliveryItems DeliveryItem[]
+
+  @@unique([branchId, code])
+  @@map("tanks")
+}
+
+model TankReading {
+  id               String   @id @default(uuid())
+  tankId           String   @map("tank_id")
+  readingDate      DateTime @map("reading_date")
+  dipReading       Decimal  @map("dip_reading") @db.Decimal(15, 4)
+  calculatedVolume Decimal  @map("calculated_volume") @db.Decimal(15, 4)
+  previousReading  Decimal? @map("previous_reading") @db.Decimal(15, 4)
+  variance         Decimal? @db.Decimal(15, 4)
+  readBy           String   @map("read_by")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tank Tank @relation(fields: [tankId], references: [id], onDelete: Cascade)
+
+  @@index([tankId, readingDate])
+  @@map("tank_readings")
+}
+
+model InventoryLedger {
+  id            String            @id @default(uuid())
+  branchId      String            @map("branch_id")
+  productId     String            @map("product_id")
+  tankId        String?           @map("tank_id")
+  date          DateTime
+  movementType  StockMovementType @map("movement_type")
+  quantity      Decimal           @db.Decimal(15, 4)
+  balanceAfter  Decimal           @map("balance_after") @db.Decimal(15, 4)
+  referenceType String?           @map("reference_type")
+  referenceId   String?           @map("reference_id")
+  notes         String?
+  createdBy     String            @map("created_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, productId, date])
+  @@map("inventory_ledgers")
+}
+
+model StockAdjustment {
+  id             String         @id @default(uuid())
+  branchId       String         @map("branch_id")
+  productId      String         @map("product_id")
+  tankId         String?        @map("tank_id")
+  adjustmentDate DateTime       @map("adjustment_date")
+  quantity       Decimal        @db.Decimal(15, 4)
+  reason         String
+  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedBy     String?        @map("approved_by")
+  approvedAt     DateTime?      @map("approved_at")
+  createdBy      String         @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_adjustments")
+}
+
+model StockTransfer {
+  id               String         @id @default(uuid())
+  fromBranchId     String         @map("from_branch_id")
+  toBranchId       String         @map("to_branch_id")
+  productId        String         @map("product_id")
+  quantity         Decimal        @db.Decimal(15, 4)
+  status           TransferStatus @default(DRAFT)
+  dispatchedAt     DateTime?      @map("dispatched_at")
+  dispatchedBy     String?        @map("dispatched_by")
+  receivedAt       DateTime?      @map("received_at")
+  receivedBy       String?        @map("received_by")
+  receivedQuantity Decimal?       @map("received_quantity") @db.Decimal(15, 4)
+  variance         Decimal?       @db.Decimal(15, 4)
+  notes            String?
+  createdBy        String         @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  fromBranch  Branch      @relation("TransferFrom", fields: [fromBranchId], references: [id], onDelete: Cascade)
+  toBranch    Branch      @relation("TransferTo", fields: [toBranchId], references: [id], onDelete: Cascade)
+  product     FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_transfers")
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  name          String
+  code          String?
+  contactPerson String?  @map("contact_person")
+  phone         String?
+  email         String?
+  address       String?
+  taxId         String?  @map("tax_id")
+  isActive      Boolean  @default(true) @map("is_active")
+  balance       Decimal  @default(0) @db.Decimal(15, 4)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+  deliveries     Delivery[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(uuid())
+  companyId            String              @map("company_id")
+  branchId             String              @map("branch_id")
+  supplierId           String              @map("supplier_id")
+  orderNumber          String              @unique @map("order_number")
+  orderDate            DateTime            @map("order_date")
+  expectedDeliveryDate DateTime?           @map("expected_delivery_date")
+  status               PurchaseOrderStatus @default(DRAFT)
+  totalAmount          Decimal             @default(0) @map("total_amount") @db.Decimal(15, 4)
+  notes                String?
+  approvedBy           String?             @map("approved_by")
+  approvedAt           DateTime?           @map("approved_at")
+  createdBy            String              @map("created_by")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  company    Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch     Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  supplier   Supplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  items      PurchaseOrderItem[]
+  deliveries Delivery[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String  @id @default(uuid())
+  purchaseOrderId  String  @map("purchase_order_id")
+  productId        String  @map("product_id")
+  quantity         Decimal @db.Decimal(15, 4)
+  unitPrice        Decimal @map("unit_price") @db.Decimal(15, 4)
+  totalPrice       Decimal @map("total_price") @db.Decimal(15, 4)
+  receivedQuantity Decimal @default(0) @map("received_quantity") @db.Decimal(15, 4)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       FuelProduct   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_items")
+}
+
+model Delivery {
+  id              String         @id @default(uuid())
+  branchId        String         @map("branch_id")
+  supplierId      String         @map("supplier_id")
+  purchaseOrderId String?        @map("purchase_order_id")
+  deliveryNumber  String         @unique @map("delivery_number")
+  deliveryDate    DateTime       @map("delivery_date")
+  truckNumber     String?        @map("truck_number")
+  driverName      String?        @map("driver_name")
+  driverLicense   String?        @map("driver_license")
+  sealNumber      String?        @map("seal_number")
+  deliveryNoteRef String?        @map("delivery_note_ref")
+  status          DeliveryStatus @default(SCHEDULED)
+  totalExpected   Decimal        @default(0) @map("total_expected") @db.Decimal(15, 4)
+  totalReceived   Decimal        @default(0) @map("total_received") @db.Decimal(15, 4)
+  variance        Decimal        @default(0) @db.Decimal(15, 4)
+  notes           String?
+  receivedBy      String?        @map("received_by")
+  verifiedBy      String?        @map("verified_by")
+  approvedBy      String?        @map("approved_by")
+  approvedAt      DateTime?      @map("approved_at")
+  documents       Json?
+  createdBy       String         @map("created_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  items         DeliveryItem[]
+
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id                  String   @id @default(uuid())
+  deliveryId          String   @map("delivery_id")
+  productId           String   @map("product_id")
+  tankId              String?  @map("tank_id")
+  expectedQuantity    Decimal  @map("expected_quantity") @db.Decimal(15, 4)
+  receivedQuantity    Decimal  @default(0) @map("received_quantity") @db.Decimal(15, 4)
+  variance            Decimal  @default(0) @db.Decimal(15, 4)
+  preDeliveryReading  Decimal? @map("pre_delivery_reading") @db.Decimal(15, 4)
+  postDeliveryReading Decimal? @map("post_delivery_reading") @db.Decimal(15, 4)
+  notes               String?
+
+  delivery Delivery    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  product  FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tank     Tank?       @relation(fields: [tankId], references: [id], onDelete: SetNull)
+
+  @@map("delivery_items")
+}
+
+model Sale {
+  id             String     @id @default(uuid())
+  branchId       String     @map("branch_id")
+  shiftId        String?    @map("shift_id")
+  cashierId      String     @map("cashier_id")
+  customerId     String?    @map("customer_id")
+  saleNumber     String     @unique @map("sale_number")
+  saleDate       DateTime   @default(now()) @map("sale_date")
+  status         SaleStatus @default(COMPLETED)
+  subtotal       Decimal    @db.Decimal(15, 4)
+  discountAmount Decimal    @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  taxAmount      Decimal    @default(0) @map("tax_amount") @db.Decimal(15, 4)
+  totalAmount    Decimal    @map("total_amount") @db.Decimal(15, 4)
+  notes          String?
+  voidedBy       String?    @map("voided_by")
+  voidedAt       DateTime?  @map("voided_at")
+  voidReason     String?    @map("void_reason")
+  idempotencyKey String?    @unique @map("idempotency_key")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  branch   Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shift    Shift?     @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  cashier  User       @relation("CashierSales", fields: [cashierId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    SaleItem[]
+  payments Payment[]
+  refunds  Refund[]
+
+  @@index([branchId, saleDate])
+  @@map("sales")
+}
+
+model SaleItem {
+  id             String   @id @default(uuid())
+  saleId         String   @map("sale_id")
+  productId      String   @map("product_id")
+  nozzleId       String?  @map("nozzle_id")
+  pumpId         String?  @map("pump_id")
+  quantity       Decimal  @db.Decimal(15, 4)
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(15, 4)
+  discountAmount Decimal  @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  taxAmount      Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 4)
+  totalAmount    Decimal  @map("total_amount") @db.Decimal(15, 4)
+  openingMeter   Decimal? @map("opening_meter") @db.Decimal(15, 4)
+  closingMeter   Decimal? @map("closing_meter") @db.Decimal(15, 4)
+
+  sale    Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product FuelProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  nozzle  Nozzle?     @relation(fields: [nozzleId], references: [id], onDelete: SetNull)
+  pump    Pump?       @relation(fields: [pumpId], references: [id], onDelete: SetNull)
+
+  @@map("sale_items")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  saleId            String?       @map("sale_id")
+  customerId        String?       @map("customer_id")
+  branchId          String        @map("branch_id")
+  paymentDate       DateTime      @default(now()) @map("payment_date")
+  method            PaymentMethod
+  amount            Decimal       @db.Decimal(15, 4)
+  transactionFee    Decimal       @default(0) @map("transaction_fee") @db.Decimal(15, 4)
+  netAmount         Decimal       @map("net_amount") @db.Decimal(15, 4)
+  reference         String?
+  providerReference String?       @map("provider_reference")
+  status            PaymentStatus @default(COMPLETED)
+  notes             String?
+  createdBy         String        @map("created_by")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  sale     Sale?     @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  branch   Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, paymentDate])
+  @@map("payments")
+}
+
+model Refund {
+  id             String         @id @default(uuid())
+  saleId         String         @map("sale_id")
+  paymentId      String?        @map("payment_id")
+  branchId       String         @map("branch_id")
+  amount         Decimal        @db.Decimal(15, 4)
+  reason         String
+  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedBy     String?        @map("approved_by")
+  approvedAt     DateTime?      @map("approved_at")
+  processedBy    String?        @map("processed_by")
+  processedAt    DateTime?      @map("processed_at")
+  createdBy      String         @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+model Customer {
+  id              String       @id @default(uuid())
+  companyId       String       @map("company_id")
+  type            CustomerType @default(INDIVIDUAL)
+  name            String
+  contactPerson   String?      @map("contact_person")
+  phone           String?
+  email           String?
+  address         String?
+  taxId           String?      @map("tax_id")
+  creditLimit     Decimal      @default(0) @map("credit_limit") @db.Decimal(15, 4)
+  currentBalance  Decimal      @default(0) @map("current_balance") @db.Decimal(15, 4)
+  paymentTermDays Int          @default(30) @map("payment_term_days")
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicles CustomerVehicle[]
+  sales    Sale[]
+  payments Payment[]
+  customerPayments CustomerPayment[]
+
+  @@map("customers")
+}
+
+model CustomerVehicle {
+  id          String   @id @default(uuid())
+  customerId  String   @map("customer_id")
+  plateNumber String   @map("plate_number")
+  make        String?
+  model       String?
+  fuelType    String?  @map("fuel_type")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_vehicles")
+}
+
+model CustomerPayment {
+  id               String        @id @default(uuid())
+  customerId       String        @map("customer_id")
+  branchId         String        @map("branch_id")
+  paymentDate      DateTime      @map("payment_date")
+  amount           Decimal       @db.Decimal(15, 4)
+  method           PaymentMethod
+  reference        String?
+  allocatedToSales Json?         @map("allocated_to_sales")
+  notes            String?
+  createdBy        String        @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("customer_payments")
+}
+
+model Shift {
+  id                String      @id @default(uuid())
+  branchId          String      @map("branch_id")
+  cashierId         String      @map("cashier_id")
+  shiftNumber       String      @unique @map("shift_number")
+  startTime         DateTime    @map("start_time")
+  endTime           DateTime?   @map("end_time")
+  status            ShiftStatus @default(OPEN)
+  openingCash       Decimal     @default(0) @map("opening_cash") @db.Decimal(15, 4)
+  expectedCash      Decimal     @default(0) @map("expected_cash") @db.Decimal(15, 4)
+  actualCash        Decimal     @default(0) @map("actual_cash") @db.Decimal(15, 4)
+  cashVariance      Decimal     @default(0) @map("cash_variance") @db.Decimal(15, 4)
+  totalSales        Decimal     @default(0) @map("total_sales") @db.Decimal(15, 4)
+  totalTransactions Int         @default(0) @map("total_transactions")
+  mobileMoney       Decimal     @default(0) @map("mobile_money") @db.Decimal(15, 4)
+  cardPayments      Decimal     @default(0) @map("card_payments") @db.Decimal(15, 4)
+  creditSales       Decimal     @default(0) @map("credit_sales") @db.Decimal(15, 4)
+  cashRefunds       Decimal     @default(0) @map("cash_refunds") @db.Decimal(15, 4)
+  cashPaidOut       Decimal     @default(0) @map("cash_paid_out") @db.Decimal(15, 4)
+  closingNotes      String?     @map("closing_notes")
+  reviewedBy        String?     @map("reviewed_by")
+  reviewedAt        DateTime?   @map("reviewed_at")
+  reopenedBy        String?     @map("reopened_by")
+  reopenedAt        DateTime?   @map("reopened_at")
+  reopenReason      String?     @map("reopen_reason")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  branch      Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  cashier     User              @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  sales       Sale[]
+  assignments ShiftAssignment[]
+
+  @@map("shifts")
+}
+
+model ShiftAssignment {
+  id           String   @id @default(uuid())
+  shiftId      String   @map("shift_id")
+  pumpId       String   @map("pump_id")
+  openingMeter Decimal? @map("opening_meter") @db.Decimal(15, 4)
+  closingMeter Decimal? @map("closing_meter") @db.Decimal(15, 4)
+
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  pump  Pump  @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+
+  @@map("shift_assignments")
+}
+
+model ExpenseCategory {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id              String        @id @default(uuid())
+  branchId        String        @map("branch_id")
+  categoryId      String        @map("category_id")
+  amount          Decimal       @db.Decimal(15, 4)
+  description     String
+  vendor          String?
+  receiptUrl      String?       @map("receipt_url")
+  expenseDate     DateTime      @map("expense_date")
+  status          ExpenseStatus @default(DRAFT)
+  paidBy          String?       @map("paid_by")
+  paidAt          DateTime?     @map("paid_at")
+  approvedBy      String?       @map("approved_by")
+  approvedAt      DateTime?     @map("approved_at")
+  rejectedBy      String?       @map("rejected_by")
+  rejectedAt      DateTime?     @map("rejected_at")
+  rejectionReason String?       @map("rejection_reason")
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  branch   Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  category ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, expenseDate])
+  @@map("expenses")
+}
+
+model Approval {
+  id          String         @id @default(uuid())
+  branchId    String?        @map("branch_id")
+  type        ApprovalType
+  referenceId String         @map("reference_id")
+  requestedBy String         @map("requested_by")
+  requestedAt DateTime       @default(now()) @map("requested_at")
+  status      ApprovalStatus @default(PENDING)
+  reviewedBy  String?        @map("reviewed_by")
+  reviewedAt  DateTime?      @map("reviewed_at")
+  comments    String?
+  metadata    Json?
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([status, type])
+  @@map("approvals")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  branchId  String?          @map("branch_id")
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Equipment {
+  id               String          @id @default(uuid())
+  branchId         String          @map("branch_id")
+  name             String
+  code             String?
+  type             EquipmentType
+  manufacturer     String?
+  model            String?
+  serialNumber     String?         @map("serial_number")
+  status           EquipmentStatus @default(OPERATIONAL)
+  installDate      DateTime?       @map("install_date")
+  warrantyExpiry   DateTime?       @map("warranty_expiry")
+  lastServiceDate  DateTime?       @map("last_service_date")
+  nextServiceDate  DateTime?       @map("next_service_date")
+  notes            String?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  branch     Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  workOrders MaintenanceWorkOrder[]
+
+  @@map("equipment")
+}
+
+model MaintenanceWorkOrder {
+  id            String              @id @default(uuid())
+  equipmentId   String              @map("equipment_id")
+  branchId      String              @map("branch_id")
+  orderNumber   String              @unique @map("order_number")
+  title         String
+  description   String?
+  priority      MaintenancePriority @default(MEDIUM)
+  status        MaintenanceStatus   @default(OPEN)
+  assignedTo    String?             @map("assigned_to")
+  scheduledDate DateTime?           @map("scheduled_date")
+  startedAt     DateTime?           @map("started_at")
+  completedAt   DateTime?           @map("completed_at")
+  partsUsed     Json?               @map("parts_used")
+  laborHours    Decimal?            @map("labor_hours") @db.Decimal(15, 2)
+  cost          Decimal?            @db.Decimal(15, 4)
+  notes         String?
+  createdBy     String              @map("created_by")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_work_orders")
+}
+
+model SafetyChecklist {
+  id            String   @id @default(uuid())
+  branchId      String   @map("branch_id")
+  checklistDate DateTime @map("checklist_date")
+  completedBy   String   @map("completed_by")
+  type          String
+  items         Json
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("safety_checklists")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  branchId  String?  @map("branch_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  before    Json?
+  after     Json?
+  reason    String?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  key         String
+  value       String
+  type        String   @default("string")
+  description String?
+  updatedBy   String?  @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, key])
+  @@map("system_settings")
+}

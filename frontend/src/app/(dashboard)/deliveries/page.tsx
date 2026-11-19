@@ -1,0 +1,521 @@
+'use client';
+
+import React, { useState } from 'react';
+import { ColumnDef } from '@tanstack/react-table';
+import {
+  Truck,
+  Plus,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldCheck,
+  FileText,
+  Search,
+  Filter,
+  Check,
+  X,
+  Droplet,
+  Clock,
+  Eye,
+  MoreVertical,
+  ArrowRight,
+  Info,
+  Shield,
+  Layers,
+  Fuel,
+} from 'lucide-react';
+import { DataTable } from '@/components/ui/data-table';
+import { Badge } from '@/components/ui/badge';
+
+export interface TankerDelivery {
+  id: string;
+  deliveryNumber: string;
+  supplier: string;
+  product: 'Petrol' | 'Diesel' | 'Kerosene';
+  targetTankCode: string;
+  date: string;
+  truckNumber: string;
+  driverName: string;
+  sealNumber: string;
+  expectedQuantity: number;
+  receivedQuantity: number;
+  variance: number;
+  preDipMm: number;
+  postDipMm: number;
+  temperatureC: number;
+  density: number;
+  status: 'APPROVED' | 'OFFLOADING' | 'PENDING_INSPECTION' | 'REJECTED';
+  verifiedBy: string;
+}
+
+const INITIAL_DELIVERIES: TankerDelivery[] = [
+  {
+    id: 'd1',
+    deliveryNumber: 'DEL-881920',
+    supplier: 'Hass Petroleum Supply',
+    product: 'Diesel',
+    targetTankCode: 'UST-02',
+    date: 'Today, 14:15 PM',
+    truckNumber: 'TRK-9812-NY',
+    driverName: 'Robert Vance',
+    sealNumber: 'SEAL-99214-B',
+    expectedQuantity: 10000,
+    receivedQuantity: 10000,
+    variance: 0,
+    preDipMm: 1120,
+    postDipMm: 1980,
+    temperatureC: 24.5,
+    density: 0.835,
+    status: 'OFFLOADING',
+    verifiedBy: 'Farhan Ali (Inventory)',
+  },
+  {
+    id: 'd2',
+    deliveryNumber: 'DEL-881918',
+    supplier: 'TotalEnergies Distribution',
+    product: 'Petrol',
+    targetTankCode: 'UST-01',
+    date: 'Nov 16, 2026',
+    truckNumber: 'TRK-4421-NJ',
+    driverName: 'Ahmed Malik',
+    sealNumber: 'SEAL-04188-A',
+    expectedQuantity: 12000,
+    receivedQuantity: 11980,
+    variance: -20,
+    preDipMm: 1650,
+    postDipMm: 2420,
+    temperatureC: 25.0,
+    density: 0.742,
+    status: 'APPROVED',
+    verifiedBy: 'Elena Rostova',
+  },
+  {
+    id: 'd3',
+    deliveryNumber: 'DEL-881915',
+    supplier: 'Somali Fuel Importers Ltd',
+    product: 'Kerosene',
+    targetTankCode: 'UST-03',
+    date: 'Nov 14, 2026',
+    truckNumber: 'TRK-1102-PA',
+    driverName: 'Mustafa Hassan',
+    sealNumber: 'SEAL-77123-C',
+    expectedQuantity: 5000,
+    receivedQuantity: 5000,
+    variance: 0,
+    preDipMm: 410,
+    postDipMm: 620,
+    temperatureC: 23.8,
+    density: 0.81,
+    status: 'APPROVED',
+    verifiedBy: 'Farhan Ali (Inventory)',
+  },
+  {
+    id: 'd4',
+    deliveryNumber: 'DEL-881912',
+    supplier: 'Hass Petroleum Supply',
+    product: 'Petrol',
+    targetTankCode: 'UST-01',
+    date: 'Nov 12, 2026',
+    truckNumber: 'TRK-8840-NY',
+    driverName: 'John Kiptoo',
+    sealNumber: 'SEAL-22901-D',
+    expectedQuantity: 15000,
+    receivedQuantity: 14960,
+    variance: -40,
+    preDipMm: 1200,
+    postDipMm: 2550,
+    temperatureC: 26.2,
+    density: 0.745,
+    status: 'APPROVED',
+    verifiedBy: 'Elena Rostova',
+  },
+];
+
+export default function DeliveriesPage() {
+  const [deliveries, setDeliveries] = useState<TankerDelivery[]>(INITIAL_DELIVERIES);
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+
+  // Modal form states
+  const [newSupplier, setNewSupplier] = useState('Hass Petroleum Supply');
+  const [newProduct, setNewProduct] = useState<'Petrol' | 'Diesel' | 'Kerosene'>('Diesel');
+  const [newTargetTank, setNewTargetTank] = useState('UST-02');
+  const [newTruckNumber, setNewTruckNumber] = useState('TRK-5520-SO');
+  const [newDriver, setNewDriver] = useState('Ali Noor');
+  const [newSeal, setNewSeal] = useState('SEAL-88910-X');
+  const [newQuantity, setNewQuantity] = useState('10000');
+
+  const handleCreateDelivery = (e: React.FormEvent) => {
+    e.preventDefault();
+    const qty = parseFloat(newQuantity) || 10000;
+    const created: TankerDelivery = {
+      id: `d-${Date.now()}`,
+      deliveryNumber: `DEL-${Math.floor(100000 + Math.random() * 900000)}`,
+      supplier: newSupplier,
+      product: newProduct,
+      targetTankCode: newTargetTank,
+      date: 'Just now',
+      truckNumber: newTruckNumber,
+      driverName: newDriver,
+      sealNumber: newSeal,
+      expectedQuantity: qty,
+      receivedQuantity: qty,
+      variance: 0,
+      preDipMm: 1100,
+      postDipMm: 1800,
+      temperatureC: 24.5,
+      density: 0.835,
+      status: 'OFFLOADING',
+      verifiedBy: 'Active User (Session)',
+    };
+    setDeliveries([created, ...deliveries]);
+    setIsReceiveModalOpen(false);
+  };
+
+  // TanStack columns
+  const columns: ColumnDef<TankerDelivery>[] = [
+    {
+      accessorKey: 'deliveryNumber',
+      header: 'Waybill / BOL',
+      cell: ({ row }) => (
+        <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+          {row.original.deliveryNumber}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'date',
+      header: 'Offload Timestamp',
+      cell: ({ row }) => <span className="font-semibold text-gray-800">{row.original.date}</span>,
+    },
+    {
+      accessorKey: 'supplier',
+      header: 'Fuel Transporter / Terminal',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-gray-900">{row.original.supplier}</span>
+          <span className="text-[11px] text-gray-400 font-mono">
+            {row.original.truckNumber} • {row.original.driverName}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'product',
+      header: 'Grade & Target',
+      cell: ({ row }) => {
+        const prod = row.original.product;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                prod === 'Petrol'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : prod === 'Diesel'
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-indigo-50 text-indigo-700'
+              }`}
+            >
+              <Fuel className="w-3 h-3" />
+              {prod}
+            </span>
+            <span className="font-mono text-xs font-bold text-gray-500">
+              → {row.original.targetTankCode}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'expectedQuantity',
+      header: 'BOL Invoice Liters',
+      cell: ({ row }) => (
+        <span className="font-bold text-gray-700 font-mono">
+          {row.original.expectedQuantity.toLocaleString()} L
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'receivedQuantity',
+      header: 'Offloaded Dip Liters',
+      cell: ({ row }) => (
+        <span className="font-extrabold text-gray-900 font-mono">
+          {row.original.receivedQuantity.toLocaleString()} L
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'variance',
+      header: 'Transit Loss / Gain',
+      cell: ({ row }) => {
+        const v = row.original.variance;
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold font-mono ${
+              v === 0
+                ? 'bg-gray-100 text-gray-600'
+                : v > 0
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700'
+            }`}
+          >
+            {v === 0 ? 'Exact (0 L)' : `${v} L`}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'sealNumber',
+      header: 'Tamper Seal',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 text-emerald-700 font-mono text-xs font-semibold">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span>{row.original.sealNumber}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => {
+        const s = row.original.status;
+        return (
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+              s === 'OFFLOADING'
+                ? 'bg-amber-100 text-amber-800 animate-pulse'
+                : s === 'APPROVED'
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                s === 'OFFLOADING' ? 'bg-amber-500' : s === 'APPROVED' ? 'bg-emerald-500' : 'bg-red-500'
+              }`}
+            />
+            {s}
+          </span>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100/70 text-amber-700 flex items-center justify-center shrink-0 shadow-xs">
+            <Truck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Road Tanker Deliveries & Offload Bay
+            </h1>
+            <p className="text-xs text-gray-500 font-medium">
+              Chamber compartment reconciliation, bill of lading dip variance, and tamper seal verification.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsReceiveModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Receive Road Tanker</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Active Tanker Offload Bay 1 Cockpit Card */}
+      <div className="bg-white rounded-3xl border border-amber-200/80 p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white animate-pulse">
+                OFFLOAD BAY 1 ACTIVE
+              </span>
+              <span className="font-mono text-xs text-gray-500">TRK-9812-NY • Hass Petroleum</span>
+            </div>
+            <h2 className="text-xl font-black text-gray-900">
+              10,000 L Ultra-Low Sulfur Diesel Discharging → UST-02
+            </h2>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Ground Earthing Clamp Attached
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Vapor Recovery Hose Coupled
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> QA Seal #SEAL-99214-B Verified
+              </span>
+            </div>
+          </div>
+
+          {/* Road Tanker Compartment Visual Allocation */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-2">
+            <div className="text-center px-3 border-r border-gray-200">
+              <div className="text-[10px] text-gray-400 font-bold uppercase">Chamber 1</div>
+              <div className="font-mono font-bold text-xs text-gray-800">5,000 L</div>
+              <span className="text-[10px] font-semibold text-emerald-600">Discharged</span>
+            </div>
+            <div className="text-center px-3 border-r border-gray-200">
+              <div className="text-[10px] text-gray-400 font-bold uppercase">Chamber 2</div>
+              <div className="font-mono font-bold text-xs text-amber-700 animate-pulse">5,000 L</div>
+              <span className="text-[10px] font-semibold text-amber-600">Flowing (52%)</span>
+            </div>
+            <div className="text-center px-3">
+              <div className="text-[10px] text-gray-400 font-bold uppercase">Chamber 3</div>
+              <div className="font-mono font-bold text-xs text-gray-400">Empty</div>
+              <span className="text-[10px] font-semibold text-gray-400">N/A</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Deliveries Ledger TanStack Table */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Road Tanker Intake & Delivery Ledger</h2>
+          <p className="text-xs text-gray-500 font-medium">
+            Historical tanker offload records with temperature compensation, density audits, and seal logs.
+          </p>
+        </div>
+
+        <DataTable
+          columns={columns}
+          data={deliveries}
+          searchPlaceholder="Search delivery waybill, supplier, or truck plate..."
+          pageSize={10}
+          emptyMessage="No tanker offload records found."
+        />
+      </div>
+
+      {/* Modal: Receive Tanker */}
+      {isReceiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <div className="flex items-center gap-2">
+                <Truck className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-gray-900 text-sm">Receive Road Tanker Consignment</h3>
+              </div>
+              <button
+                onClick={() => setIsReceiveModalOpen(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDelivery} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Fuel Supplier / Hauler</label>
+                <input
+                  type="text"
+                  required
+                  value={newSupplier}
+                  onChange={(e) => setNewSupplier(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Fuel Product</label>
+                  <select
+                    value={newProduct}
+                    onChange={(e) => setNewProduct(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-semibold"
+                  >
+                    <option value="Petrol">Petrol</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Kerosene">Kerosene</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Target Storage Tank</label>
+                  <select
+                    value={newTargetTank}
+                    onChange={(e) => setNewTargetTank(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-semibold"
+                  >
+                    <option value="UST-01">UST-01 (Petrol Main)</option>
+                    <option value="UST-02">UST-02 (Diesel Heavy)</option>
+                    <option value="UST-03">UST-03 (Kerosene)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Tanker Plate</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTruckNumber}
+                    onChange={(e) => setNewTruckNumber(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Driver Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newDriver}
+                    onChange={(e) => setNewDriver(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Invoice Liters (BOL)</label>
+                  <input
+                    type="number"
+                    required
+                    value={newQuantity}
+                    onChange={(e) => setNewQuantity(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Security Seal Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={newSeal}
+                    onChange={(e) => setNewSeal(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-mono text-gray-900"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsReceiveModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs"
+                >
+                  Authorize Offload
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
