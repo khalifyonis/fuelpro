@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Users,
   Plus,
@@ -703,17 +704,13 @@ export default function CustomersPage() {
             <span>Enroll Vehicle</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveCustomerTab('PROFILE');
-              setIsAddCustomerOpen(true);
-            }}
+          <Link
+            href="/customers/new"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>New Customer Account</span>
-          </button>
+          </Link>
         </div>
       </div>
 

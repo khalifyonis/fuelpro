@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Plus,
   Droplet,
@@ -472,17 +473,13 @@ export default function TanksPage() {
             <span>Log Physical Dip</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTankTab('SPEC');
-              setIsAddTankOpen(true);
-            }}
+          <Link
+            href="/tanks/new"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Add Tank</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -895,16 +892,15 @@ export default function TanksPage() {
                           : row.grade === 'Diesel'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
                           : 'bg-purple-50 text-purple-700 border border-purple-200/60'
-                      }`}
+                        }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          row.grade === 'Petrol'
-                            ? 'bg-emerald-500'
-                            : row.grade === 'Diesel'
+                        className={`w-1.5 h-1.5 rounded-full ${row.grade === 'Petrol'
+                          ? 'bg-emerald-500'
+                          : row.grade === 'Diesel'
                             ? 'bg-amber-500'
                             : 'bg-purple-500'
-                        }`}
+                          }`}
                       />
                       {row.grade}
                     </span>
