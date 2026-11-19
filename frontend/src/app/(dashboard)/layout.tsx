@@ -27,7 +27,7 @@ export default function DashboardLayout({
   const currentPermissions = ROLE_PERMISSIONS[normalizedRole];
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex">
+    <div className="min-h-screen bg-[#f8fafc] flex">
       {/* Sidebar with dynamic role-filtered navigation passed explicitly */}
       <Sidebar
         collapsed={collapsed}
@@ -52,7 +52,7 @@ export default function DashboardLayout({
           onChangeRole={setActiveRole}
         />
 
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-6 lg:p-8 max-w-[1680px] w-full mx-auto overflow-y-auto">
           {isAllowed ? (
             children
           ) : (

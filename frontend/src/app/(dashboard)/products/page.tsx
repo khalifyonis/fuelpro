@@ -21,6 +21,7 @@ import {
   Radio,
   Tag,
   SlidersHorizontal,
+  Download,
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -216,32 +217,205 @@ export default function ProductsPage() {
     },
   ];
 
+  const avgMarginPct = products.reduce((acc, p) => acc + p.marginPct, 0) / Math.max(1, products.length);
+  const totalNozzlesServing = products.reduce((acc, p) => acc + p.nozzlesCount, 0);
+
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center shrink-0 shadow-xs">
-            <Fuel className="w-6 h-6" />
+      {/* ===================================================================== */}
+      {/* 1. HEADER ROW (Matches Customers & Tanks Visual Standard)             */}
+      {/* ===================================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+            <Fuel className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Fuel Products & Forecourt Retail Pricing
-            </h1>
-            <p className="text-xs text-gray-500 font-medium">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 leading-tight">
+                Fuel Products & Forecourt Retail Pricing
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">
+                Enterprise Forecourt v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
               Roadside electronic LED totem pylon simulation, gross profit margins, and pump price broadcasting.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = ['Product Code,Product Name,Unit,Selling Price,Cost Price,Unit Margin ($),Margin %,Tanks,Nozzles,Status,Effective Date'];
+              const rows = products.map(
+                (p) => `"${p.code}","${p.name}","${p.unit}",${p.sellingPrice},${p.costPrice},${p.margin},${p.marginPct}%,${p.tanksCount},${p.nozzlesCount},"${p.status}","${p.effectiveDate}"`
+              );
+              const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `FuelPro_Products_Catalog_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
+
           <Link
             href="/products/new"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Add Fuel Grade</span>
           </Link>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* 2. 4 FORECOURT PRICING & MARGIN KPI CARDS (With Sparkline Waves)      */}
+      {/* ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Benchmark Petrol Rate */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Super 95 Petrol Rate
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">$2.15 / L</span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Active
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Margin: +$0.33 / L (15.3%)
+              </span>
+            </div>
+          </div>
+          {/* Emerald Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-emerald-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 24C12 24 16 12 26 12C36 12 40 20 50 14C56 9 62 4 68 3"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 2: Benchmark Diesel Rate */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Diesel (AGO 50ppm) Rate
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">$2.05 / L</span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded-md">
+                  Active
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Margin: +$0.31 / L (15.1%)
+              </span>
+            </div>
+          </div>
+          {/* Amber Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-amber-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 20C10 20 18 6 28 6C38 6 44 24 54 18C60 14 64 6 68 4"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 3: Average Product Margin % */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Weighted Retail Margin
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-emerald-600 font-mono">
+                  {avgMarginPct.toFixed(1)}%
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Healthy
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Above wholesale target floor
+              </span>
+            </div>
+          </div>
+          {/* Indigo Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-indigo-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 18C12 18 16 26 26 22C36 18 42 8 52 8C58 8 62 14 68 12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 4: Nozzles & Tanks Broadcast */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Radio className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Totem & Pump Sync
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900">{totalNozzlesServing} Nozzles</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Broadcasted
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Synchronized with roadside totem
+              </span>
+            </div>
+          </div>
+          {/* Purple Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-purple-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 10C14 10 20 22 30 20C40 18 46 6 56 6C62 6 64 12 68 10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 

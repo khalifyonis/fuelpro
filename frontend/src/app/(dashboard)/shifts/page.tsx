@@ -26,6 +26,8 @@ import {
   Banknote,
   Gauge,
   UserCheck,
+  Download,
+  Fuel,
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -338,30 +340,206 @@ export default function ShiftsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-100/70 text-amber-700 flex items-center justify-center shrink-0 shadow-xs">
-            <Clock className="w-6 h-6" />
+      {/* ===================================================================== */}
+      {/* 1. HEADER ROW (Matches Customers & Tanks Quality)                     */}
+      {/* ===================================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+            <Clock className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Cashier Shifts & Forecourt Handover
-            </h1>
-            <p className="text-xs text-gray-500 font-medium">
-              Forecourt dispenser meter reading audit, blind cash drawer count, and supervisor reconciliation.
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 leading-tight">
+                Cashier Shifts & Forecourt Handover
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+                Enterprise Forecourt v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Forecourt dispenser meter reading audit, blind cash drawer till float, and supervisor reconciliation.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = ['Shift #,Cashier,Type,Start,End,Status,Pumps,Opening Cash,Expected Cash,Actual Cash,Variance,Total Sales,Txns,Reconciled By'];
+              const rows = shifts.map(
+                (s) => `"${s.shiftNumber}","${s.cashier}","${s.shiftType}","${s.startTime}","${s.endTime}","${s.status}","${s.assignedPumps}",${s.openingCash},${s.expectedCash},${s.actualCash},${s.variance},${s.totalSales},${s.transactions},"${s.reconciledBy}"`
+              );
+              const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `FuelPro_Shifts_Audit_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
+
           <Link
             href="/shifts/new"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Open New Shift</span>
           </Link>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* 2. 4 FORECOURT SHIFT KPI CARDS (With Sparkline Waves)                  */}
+      {/* ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Active Duty Shift */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Current Duty Shift
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-base font-black text-gray-900">
+                  {activeShift ? activeShift.cashier : 'No Active Shift'}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Live
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                {activeShift ? `${activeShift.shiftType} Shift • ${activeShift.shiftNumber}` : 'Register Closed'}
+              </span>
+            </div>
+          </div>
+          {/* Amber Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-amber-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 24C12 24 16 12 26 12C36 12 40 20 50 14C56 9 62 4 68 3"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 2: Expected Cash in Drawer */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Banknote className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Expected Cash Till Float
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">
+                  ${activeShift ? activeShift.expectedCash.toFixed(2) : '0.00'}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Float: $500
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Subject to blind reconciliation
+              </span>
+            </div>
+          </div>
+          {/* Emerald Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-emerald-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 20C10 20 18 6 28 6C38 6 44 24 54 18C60 14 64 6 68 4"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 3: Shift Gross Fuel Lifted */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Shift Gross Lifted
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">
+                  ${activeShift ? activeShift.totalSales.toFixed(2) : '0.00'}
+                </span>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded-md">
+                  {activeShift ? `${activeShift.transactions} txns` : '0 txns'}
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Across 4 assigned dispensers
+              </span>
+            </div>
+          </div>
+          {/* Blue Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-blue-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 18C12 18 16 26 26 22C36 18 42 8 52 8C58 8 62 14 68 12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 4: Historical Reconciliation Accuracy */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Till Variance Accuracy
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900">
+                  99.8%
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Pass
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Supervisor audit compliance
+              </span>
+            </div>
+          </div>
+          {/* Purple Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-purple-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 10C14 10 20 22 30 20C40 18 46 6 56 6C62 6 64 12 68 10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 

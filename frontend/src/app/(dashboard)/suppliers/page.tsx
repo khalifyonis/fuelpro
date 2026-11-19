@@ -20,6 +20,9 @@ import {
   ExternalLink,
   Receipt,
   ShoppingCart,
+  Download,
+  Clock,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -250,22 +253,47 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Card */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-5 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
-              <Building2 className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-bold tracking-tight text-gray-900">
-              Fuel Suppliers & Bulk Purchase Orders
-            </h2>
+      {/* Header Banner matching Modern Standard */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0">
+            <Building2 className="w-6 h-6" />
           </div>
-          <p className="text-xs text-gray-500 font-medium mt-1">
-            Manage refinery distribution contracts, bulk tanker procurement orders, and vendor accounts payable.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                Fuel Suppliers & Bulk Purchase Orders
+              </h1>
+              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
+                Forecourt Procurement v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium">
+              Manage refinery distribution contracts, bulk tanker procurement orders, and vendor accounts payable.
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = 'Supplier ID,Name,Code,Contact,Phone,Email,Status,Outstanding Balance\n';
+              const rows = suppliers
+                .map((s) => `"${s.id}","${s.name}","${s.code}","${s.contact}","${s.phone}","${s.email}","${s.status}",${s.outstandingBalance}`)
+                .join('\n');
+              const blob = new Blob([headers + rows], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `FuelPro_Suppliers_${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold shadow-xs transition-all"
+          >
+            <Download className="w-4 h-4 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
           <Link
             href="/purchase-orders/new"
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all"
@@ -283,38 +311,93 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      {/* KPI Stats Ribbon */}
+      {/* 4 Forecourt KPI Cards with Sparklines */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Accounts Payable</span>
+        {/* Card 1: Accounts Payable */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Accounts Payable</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/50">
+              Net 30 Terms
+            </span>
+          </div>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-black text-amber-600">${totalPayables.toLocaleString()}</span>
           </div>
           <span className="text-[11px] text-gray-500 mt-1 block">Pending wholesale fuel settlements</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 18 Q 25 22, 50 14 T 100 8"
+                fill="none"
+                stroke="#d97706"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Active Contracts</span>
+        {/* Card 2: Active Contracts */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Active Contracts</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
+              100% In Good Standing
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-gray-900">{suppliers.length}</span>
             <span className="text-xs font-semibold text-gray-500">Refineries</span>
           </div>
           <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Shell, TotalEnergies, Oryx</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 16 Q 30 6, 60 14 T 100 4"
+                fill="none"
+                stroke="#059669"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Purchase Orders</span>
+        {/* Card 3: Purchase Orders */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Purchase Orders</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50">
+              {purchaseOrders.filter((po) => po.status === 'CONFIRMED').length} In Transit
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-blue-600">{purchaseOrders.length}</span>
-            <span className="text-xs font-semibold text-gray-500">Active</span>
+            <span className="text-xs font-semibold text-gray-500">Requisitions</span>
           </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">
-            {purchaseOrders.filter((po) => po.status === 'CONFIRMED').length} in transit / confirmed
-          </span>
+          <span className="text-[11px] text-gray-500 mt-1 block">Scheduled tanker dispatches</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 20 Q 20 8, 50 12 T 100 6"
+                fill="none"
+                stroke="#2563eb"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Total Bulk Deliveries</span>
+        {/* Card 4: Total Bulk Deliveries */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Total Bulk Deliveries</span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200/50">
+              Verified Discharge
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-gray-900">
               {suppliers.reduce((acc, s) => acc + s.deliveriesCount, 0)}
@@ -322,6 +405,17 @@ export default function SuppliersPage() {
             <span className="text-xs font-semibold text-gray-500">Tankers</span>
           </div>
           <span className="text-[11px] text-gray-500 mt-1 block">Historical lifetime shipments</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 14 Q 35 22, 70 8 T 100 4"
+                fill="none"
+                stroke="#9333ea"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 

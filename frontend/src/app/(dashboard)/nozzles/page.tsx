@@ -15,6 +15,7 @@ import {
   X,
   Droplet,
   Sliders,
+  Download,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -161,45 +162,95 @@ export default function NozzlesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Card */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-5 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
-              <Gauge className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-bold tracking-tight text-gray-900">
-              Dispenser Nozzles & Totalizer Meters
-            </h2>
+      {/* Header Banner matching Modern Standard */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0">
+            <Gauge className="w-6 h-6" />
           </div>
-          <p className="text-xs text-gray-500 font-medium mt-1">
-            Forecourt electronic totalizers, Weights & Measures verification, meter calibration audits, and flow rate performance.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                Dispenser Nozzles & Totalizer Meters
+              </h1>
+              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
+                Enterprise Forecourt v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium">
+              Forecourt electronic totalizers, Weights & Measures verification, meter calibration audits, and flow rate performance.
+            </p>
+          </div>
         </div>
-        <Link
-          href="/nozzles/new"
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Dispenser Nozzle</span>
-        </Link>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = 'ID,Label,Pump Code,Fuel Product,Totalizer (L),Flow Rate (LPM),Status,Last Calibrated\n';
+              const rows = nozzles
+                .map((n) => `"${n.id}","${n.label}","${n.pumpCode}","${n.fuelProduct}",${n.totalizerReadingL},${n.flowRateLpm},"${n.status}","${n.lastCalibratedDate}"`)
+                .join('\n');
+              const blob = new Blob([headers + rows], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `FuelPro_Nozzles_Audit_${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold shadow-xs transition-all"
+          >
+            <Download className="w-4 h-4 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
+          <Link
+            href="/nozzles/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Dispenser Nozzle</span>
+          </Link>
+        </div>
       </div>
 
-      {/* KPI Stats */}
+      {/* 4 Forecourt KPI Cards with Sparklines */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Total Active Nozzles</span>
+        {/* Card 1: Total Active Nozzles */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Active Nozzles</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
+              100% Online
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-gray-900">
               {nozzles.filter((n) => n.status === 'ACTIVE').length}
             </span>
             <span className="text-xs font-semibold text-gray-500">Nozzles</span>
           </div>
-          <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Online & dispensing</span>
+          <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Live dispensing enabled</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 16 Q 25 6, 50 14 T 100 4"
+                fill="none"
+                stroke="#059669"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Cumulative Meter Volume</span>
+        {/* Card 2: Cumulative Meter Volume */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Cumulative Volume</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50">
+              Totalizer Sum
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-blue-600">
               {Math.round(nozzles.reduce((acc, n) => acc + n.totalizerReadingL, 0)).toLocaleString()}
@@ -207,26 +258,71 @@ export default function NozzlesPage() {
             <span className="text-xs font-semibold text-gray-500">Litres</span>
           </div>
           <span className="text-[11px] text-gray-500 mt-1 block">Lifetime forecourt throughput</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 20 Q 30 10, 60 16 T 100 6"
+                fill="none"
+                stroke="#2563eb"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Average Flow Rate</span>
+        {/* Card 3: Average Flow Rate */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Average Flow Rate</span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200/50">
+              Nominal Velocity
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-gray-900">39.2</span>
             <span className="text-xs font-semibold text-gray-500">L / min</span>
           </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">Normal forecourt pumping speed</span>
+          <span className="text-[11px] text-gray-500 mt-1 block">Forecourt dispenser speed</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 14 Q 30 22, 60 10 T 100 4"
+                fill="none"
+                stroke="#9333ea"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Calibration Status</span>
+        {/* Card 4: Calibration Status */}
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Weights & Measures</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/50">
+              Audit Pending
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black text-amber-600">
               {nozzles.filter((n) => n.status === 'CALIBRATION_DUE').length}
             </span>
-            <span className="text-xs font-semibold text-gray-500">Due</span>
+            <span className="text-xs font-semibold text-gray-500">Nozzle Due</span>
           </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">Scheduled verification pending</span>
+          <span className="text-[11px] text-gray-500 mt-1 block">Scheduled verification audit</span>
+          <div className="mt-3 h-8 w-full">
+            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+              <path
+                d="M0 18 Q 25 22, 50 14 T 100 8"
+                fill="none"
+                stroke="#d97706"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 

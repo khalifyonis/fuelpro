@@ -26,6 +26,12 @@ import {
   RotateCcw,
   Building2,
   Tag,
+  LayoutGrid,
+  Table as TableIcon,
+  Gauge,
+  Car,
+  User,
+  ShieldCheck,
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -237,8 +243,10 @@ export default function SalesPage() {
   const [selectedProduct, setSelectedProduct] = useState<string>('ALL');
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL');
   const [selectedPump, setSelectedPump] = useState<string>('ALL');
-  const [selectedSale, setSelectedSale] = useState<ForecourtSale | null>(null);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'SPLIT' | 'TABLE'>('SPLIT');
+  const [selectedSale, setSelectedSale] = useState<ForecourtSale | null>(INITIAL_SALES[0]);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
   // Compute live aggregates
   const totalVolume = useMemo(() => sales.reduce((acc, s) => acc + s.litres, 0), [sales]);
@@ -246,127 +254,122 @@ export default function SalesPage() {
     () => sales.filter((s) => s.status === 'COMPLETED').reduce((acc, s) => acc + s.total, 0),
     [sales]
   );
+  const avgTicket = totalRevenue / Math.max(1, sales.filter((s) => s.status === 'COMPLETED').length);
+
   const tenderCounts = useMemo(() => {
     return {
+      ALL: sales.length,
       CASH: sales.filter((s) => s.method === 'CASH').length,
       CARD: sales.filter((s) => s.method === 'CARD').length,
-      MOBILE: sales.filter((s) => s.method === 'MOBILE_MONEY').length,
+      MOBILE_MONEY: sales.filter((s) => s.method === 'MOBILE_MONEY').length,
       CREDIT: sales.filter((s) => s.method === 'CREDIT').length,
     };
   }, [sales]);
 
-  // Filtered dataset for TanStack table
+  // Filtered dataset
   const filteredData = useMemo(() => {
     return sales.filter((s) => {
-      const matchProduct = selectedProduct === 'ALL' || s.product === selectedProduct;
-      const matchMethod = selectedMethod === 'ALL' || s.method === selectedMethod;
-      const matchPump = selectedPump === 'ALL' || s.pump === selectedPump;
-      return matchProduct && matchMethod && matchPump;
-    });
-  }, [sales, selectedProduct, selectedMethod, selectedPump]);
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        s.receiptNumber.toLowerCase().includes(q) ||
+        s.customer.toLowerCase().includes(q) ||
+        (s.vehiclePlate && s.vehiclePlate.toLowerCase().includes(q)) ||
+        s.cashier.toLowerCase().includes(q);
 
-  // Export to CSV function
+      const matchesProduct = selectedProduct === 'ALL' || s.product === selectedProduct;
+      const matchesMethod = selectedMethod === 'ALL' || s.method === selectedMethod;
+      const matchesPump = selectedPump === 'ALL' || s.pump === selectedPump;
+
+      return matchesSearch && matchesProduct && matchesMethod && matchesPump;
+    });
+  }, [sales, searchQuery, selectedProduct, selectedMethod, selectedPump]);
+
   const handleExportCsv = () => {
-    const headers = ['Receipt #', 'Time', 'Cashier', 'Pump', 'Product', 'Litres', 'Rate', 'Total', 'Payment Method', 'Customer', 'Plate', 'Status'];
-    const rows = filteredData.map((s) => [
-      s.receiptNumber,
-      s.time,
-      s.cashier,
-      s.pump,
-      s.product,
-      s.litres.toFixed(2),
-      s.rate.toFixed(2),
-      s.total.toFixed(2),
-      s.method,
-      `"${s.customer}"`,
-      s.vehiclePlate || 'N/A',
-      s.status,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `fuelpro-sales-ledger-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const headers = [
+      'Receipt #,Timestamp,Cashier,Dispenser,Nozzle,Product,Liters,Rate/L,Total ($),Tender,Customer,Plate,Meter Start,Meter End,Status',
+    ];
+    const rows = filteredData.map(
+      (s) =>
+        `"${s.receiptNumber}","${s.time}","${s.cashier}","${s.pump}","${s.nozzle}","${s.product}",${s.litres},${s.rate},${s.total},"${s.method}","${s.customer}","${s.vehiclePlate || 'N/A'}",${s.meterStart},${s.meterEnd},"${s.status}"`
+    );
+    const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FuelPro_Sales_Ledger_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
   };
 
-  // TanStack Table Column Definitions
+  // TanStack columns
   const columns: ColumnDef<ForecourtSale>[] = [
     {
       accessorKey: 'receiptNumber',
       header: 'Receipt #',
       cell: ({ row }) => (
-        <button
-          onClick={() => {
-            setSelectedSale(row.original);
-            setIsReceiptOpen(true);
-          }}
-          className="flex items-center gap-1.5 font-bold text-blue-600 hover:text-blue-800 hover:underline"
-        >
-          <Receipt className="w-3.5 h-3.5 text-blue-500" />
-          <span>{row.original.receiptNumber}</span>
-        </button>
+        <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md text-xs">
+          {row.original.receiptNumber}
+        </span>
       ),
     },
     {
       accessorKey: 'time',
       header: 'Timestamp',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 text-gray-500">
-          <Clock className="w-3.5 h-3.5 text-gray-400" />
-          <span className="font-medium text-gray-700">{row.original.time}</span>
-        </div>
-      ),
+      cell: ({ row }) => <span className="text-gray-600 font-medium text-xs">{row.original.time}</span>,
     },
     {
       accessorKey: 'pump',
-      header: 'Dispenser',
+      header: 'Dispenser & Nozzle',
       cell: ({ row }) => (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-xs bg-gray-100 text-gray-800">
-          {row.original.pump}
-        </span>
+        <div className="flex flex-col text-xs">
+          <span className="font-bold text-gray-900">{row.original.pump}</span>
+          <span className="text-[10px] text-gray-400 font-mono">{row.original.nozzle}</span>
+        </div>
       ),
     },
     {
       accessorKey: 'product',
       header: 'Fuel Grade',
       cell: ({ row }) => {
-        const prod = row.original.product;
-        const color =
-          prod === 'Petrol'
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : prod === 'Diesel'
-            ? 'bg-amber-50 text-amber-700 border-amber-200'
-            : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        const p = row.original.product;
         return (
-          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${color}`}>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+              p === 'Petrol'
+                ? 'bg-amber-100 text-amber-800'
+                : p === 'Diesel'
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-purple-100 text-purple-800'
+            }`}
+          >
             <Fuel className="w-3 h-3" />
-            {prod}
+            {p}
           </span>
         );
       },
     },
     {
       accessorKey: 'litres',
-      header: 'Volume',
+      header: 'Volume (L)',
       cell: ({ row }) => (
-        <span className="font-bold text-gray-900">
-          {row.original.litres.toFixed(2)} <span className="text-[11px] font-normal text-gray-400">L</span>
+        <span className="font-mono font-bold text-gray-900 text-xs">
+          {row.original.litres.toFixed(2)} <span className="text-[10px] text-gray-400 font-normal">L</span>
         </span>
       ),
     },
     {
       accessorKey: 'rate',
       header: 'Rate / L',
-      cell: ({ row }) => <span className="text-gray-600 font-semibold">${row.original.rate.toFixed(2)}</span>,
+      cell: ({ row }) => (
+        <span className="text-gray-600 font-mono text-xs font-semibold">
+          ${row.original.rate.toFixed(2)}
+        </span>
+      ),
     },
     {
       accessorKey: 'total',
       header: 'Gross Total',
       cell: ({ row }) => (
-        <span className="font-extrabold text-sm text-gray-900">
+        <span className="font-mono font-black text-sm text-gray-900">
           ${row.original.total.toFixed(2)}
         </span>
       ),
@@ -377,7 +380,7 @@ export default function SalesPage() {
       cell: ({ row }) => {
         const m = row.original.method;
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-700">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-gray-50 border border-gray-200 text-gray-700">
             {m === 'CASH' && <Banknote className="w-3.5 h-3.5 text-emerald-600" />}
             {m === 'CARD' && <CreditCard className="w-3.5 h-3.5 text-blue-600" />}
             {m === 'MOBILE_MONEY' && <Smartphone className="w-3.5 h-3.5 text-teal-600" />}
@@ -391,9 +394,9 @@ export default function SalesPage() {
       accessorKey: 'customer',
       header: 'Customer / Vehicle',
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-800 truncate max-w-[150px]">{row.original.customer}</span>
-          <span className="text-[11px] text-gray-400 font-mono">{row.original.vehiclePlate || 'Walk-in'}</span>
+        <div className="flex flex-col text-xs">
+          <span className="font-semibold text-gray-800 truncate max-w-[140px]">{row.original.customer}</span>
+          <span className="text-[10px] text-gray-400 font-mono">{row.original.vehiclePlate || 'Walk-in'}</span>
         </div>
       ),
     },
@@ -404,8 +407,8 @@ export default function SalesPage() {
         const isComp = row.original.status === 'COMPLETED';
         return (
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              isComp ? 'bg-emerald-100/70 text-emerald-700' : 'bg-red-100/70 text-red-700'
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+              isComp ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isComp ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -418,277 +421,592 @@ export default function SalesPage() {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => {
-              setSelectedSale(row.original);
-              setIsReceiptOpen(true);
-            }}
-            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Inspect & Print Slip"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setSelectedSale(row.original);
+            setIsReceiptModalOpen(true);
+          }}
+          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+          title="Print 80mm ESC/POS Thermal Receipt"
+        >
+          <Printer className="w-4 h-4" />
+        </button>
       ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Sales Management Top Executive Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0 shadow-xs">
-            <Receipt className="w-6 h-6" />
+      {/* ===================================================================== */}
+      {/* 1. HEADER ROW (Matches Customers & Tanks Visual Architecture)          */}
+      {/* ===================================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+            <Receipt className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Forecourt Sales & Transactions</h1>
-            <p className="text-xs text-gray-500 font-medium">
-              Enterprise real-time forecourt transaction audit ledger, tender settlement, and ESC/POS thermal slips.
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 leading-tight">
+                Forecourt Sales & Transactions
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wider">
+                Enterprise Forecourt v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Enterprise real-time forecourt transaction audit ledger, tender settlement reconciliation, and 80mm thermal receipts.
             </p>
           </div>
         </div>
 
-        {/* Live Metrics Summary Pills & New Action */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-200/80 shadow-2xs text-xs">
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
-            <span className="text-gray-500 font-medium">Today&apos;s Gross:</span>
-            <strong className="text-gray-900 font-bold">${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+        <div className="flex items-center gap-2.5">
+          {/* View Mode Toggle */}
+          <div className="bg-gray-100 p-1 rounded-xl flex items-center gap-1 border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setViewMode('SPLIT')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'SPLIT'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Split Cockpit</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('TABLE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'TABLE'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span>Transaction Ledger</span>
+            </button>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-200/80 shadow-2xs text-xs">
-            <Fuel className="w-4 h-4 text-blue-600" />
-            <span className="text-gray-500 font-medium">Throughput:</span>
-            <strong className="text-gray-900 font-bold">{totalVolume.toFixed(1)} L</strong>
-          </div>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
+
           <Link
             href="/sales/new"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>New Sale Dispatch</span>
           </Link>
         </div>
       </div>
 
-      {/* Tender Method Distribution Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Banknote className="w-4 h-4" />
+      {/* ===================================================================== */}
+      {/* 2. 4 FORECOURT KPI CARDS (With Sparkline Waves like Customers)         */}
+      {/* ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Today's Gross Revenue */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 stroke-[2]" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-gray-400 uppercase">Cash Tenders</div>
-              <div className="text-sm font-bold text-gray-900">{tenderCounts.CASH} txns</div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Today&apos;s Gross Revenue
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">
+                  ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                  <span>↑</span> 14.8%
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Across all pump islands
+              </span>
             </div>
           </div>
-          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Settled</span>
+          {/* Blue Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-blue-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 24C12 24 16 12 26 12C36 12 40 20 50 14C56 9 62 4 68 3"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <CreditCard className="w-4 h-4" />
+        {/* Card 2: Forecourt Throughput */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 stroke-[2]" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-gray-400 uppercase">POS Cards</div>
-              <div className="text-sm font-bold text-gray-900">{tenderCounts.CARD} txns</div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Forecourt Throughput
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">
+                  {totalVolume.toFixed(1)} <span className="text-xs font-semibold text-gray-400">L</span>
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  Active
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Total wet stock dispensed
+              </span>
             </div>
           </div>
-          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Visa / MC</span>
+          {/* Emerald Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-emerald-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 20C10 20 18 6 28 6C38 6 44 24 54 18C60 14 64 6 68 4"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
-              <Smartphone className="w-4 h-4" />
+        {/* Card 3: Average Ticket Size */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Receipt className="w-5 h-5 stroke-[2]" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-gray-400 uppercase">Mobile Money</div>
-              <div className="text-sm font-bold text-gray-900">{tenderCounts.MOBILE} txns</div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Average Basket Ticket
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">
+                  ${avgTicket.toFixed(2)}
+                </span>
+                <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded-md">
+                  {sales.length} txns
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Per vehicle fueling event
+              </span>
             </div>
           </div>
-          <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">EVC / Zaad</span>
+          {/* Purple Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-purple-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 18C12 18 16 26 26 22C36 18 42 8 52 8C58 8 62 14 68 12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Building2 className="w-4 h-4" />
+        {/* Card 4: Tender Settlement Health */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Banknote className="w-5 h-5 stroke-[2]" />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-gray-400 uppercase">Corporate Fleet</div>
-              <div className="text-sm font-bold text-gray-900">{tenderCounts.CREDIT} txns</div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Cash vs Digital Tenders
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900">
+                  {Math.round((tenderCounts.CASH / sales.length) * 100)}% <span className="text-xs text-gray-400">Cash</span>
+                </span>
+                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded-md">
+                  {Math.round(((sales.length - tenderCounts.CASH) / sales.length) * 100)}% Digital
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                POS Cards & EVC Plus Settled
+              </span>
             </div>
           </div>
-          <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">On Credit</span>
+          {/* Amber Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-amber-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 10C14 10 20 22 30 20C40 18 46 6 56 6C62 6 64 12 68 10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
-      {/* TanStack Table with Multi-Faceted Filters */}
-      <DataTable
-        columns={columns}
-        data={filteredData}
-        searchPlaceholder="Filter by receipt, customer, or plate..."
-        onExportCsv={handleExportCsv}
-        pageSize={10}
-        emptyMessage="No sales transactions matched your filter criteria."
-        filterComponent={
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Fuel Grade Filter */}
-            <select
-              value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
-              className="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
-            >
-              <option value="ALL">All Fuel Grades</option>
-              <option value="Petrol">Petrol (Super 95)</option>
-              <option value="Diesel">Diesel (Ultra Low)</option>
-              <option value="Kerosene">Kerosene</option>
-            </select>
+      {/* ===================================================================== */}
+      {/* 3. MULTI-FACETED FILTER & SEARCH STRIP                                */}
+      {/* ===================================================================== */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search receipt #, customer, vehicle plate, or cashier..."
+            className="w-full pl-10 pr-4 py-2 bg-gray-50/70 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
+        </div>
 
-            {/* Payment Method Filter */}
-            <select
-              value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value)}
-              className="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
-            >
-              <option value="ALL">All Tender Types</option>
-              <option value="CASH">Cash</option>
-              <option value="CARD">Debit / Credit Card</option>
-              <option value="MOBILE_MONEY">Mobile Money</option>
-              <option value="CREDIT">Corporate Fleet Credit</option>
-            </select>
-
-            {/* Pump Selector */}
-            <select
-              value={selectedPump}
-              onChange={(e) => setSelectedPump(e.target.value)}
-              className="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
-            >
-              <option value="ALL">All Dispensers</option>
-              <option value="Pump 01">Pump 01 (Island 1)</option>
-              <option value="Pump 02">Pump 02 (Island 1)</option>
-              <option value="Pump 03">Pump 03 (Island 2)</option>
-              <option value="Pump 04">Pump 04 (Island 2)</option>
-            </select>
-          </div>
-        }
-      />
-
-      {/* Slide-Over Drawer: 80mm ESC/POS Thermal Receipt & Audit Telemetry */}
-      {isReceiptOpen && selectedSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/70">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-gray-900 text-sm">ESC/POS Forecourt Slip</h3>
-              </div>
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tender Filter Pills */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs">
+            {[
+              { key: 'ALL', label: 'All Tenders', count: tenderCounts.ALL },
+              { key: 'CASH', label: 'Cash', count: tenderCounts.CASH },
+              { key: 'CARD', label: 'Card', count: tenderCounts.CARD },
+              { key: 'MOBILE_MONEY', label: 'Mobile', count: tenderCounts.MOBILE_MONEY },
+              { key: 'CREDIT', label: 'Fleet Credit', count: tenderCounts.CREDIT },
+            ].map((t) => (
               <button
-                onClick={() => setIsReceiptOpen(false)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200/50 transition-colors"
+                key={t.key}
+                type="button"
+                onClick={() => setSelectedMethod(t.key)}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer ${
+                  selectedMethod === t.key
+                    ? 'bg-white text-blue-700 shadow-2xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <span>{t.label}</span>
+                <span className="text-[10px] font-semibold text-gray-400">({t.count})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Product Selector */}
+          <select
+            value={selectedProduct}
+            onChange={(e) => setSelectedProduct(e.target.value)}
+            className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+          >
+            <option value="ALL">All Fuel Grades</option>
+            <option value="Petrol">Petrol (Super 95)</option>
+            <option value="Diesel">Diesel (AGO 50ppm)</option>
+            <option value="Kerosene">Kerosene</option>
+          </select>
+
+          {/* Pump Selector */}
+          <select
+            value={selectedPump}
+            onChange={(e) => setSelectedPump(e.target.value)}
+            className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+          >
+            <option value="ALL">All Dispensers</option>
+            <option value="Pump 01">Pump 01</option>
+            <option value="Pump 02">Pump 02</option>
+            <option value="Pump 03">Pump 03</option>
+            <option value="Pump 04">Pump 04</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* 4. VIEW MODE 1: SPLIT COCKPIT (Matches Customers Cockpit Quality)      */}
+      {/* ===================================================================== */}
+      {viewMode === 'SPLIT' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left 7 Cols: Transaction Feed Cards */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+              <span>Showing {filteredData.length} Recent Fueling Dispatches</span>
+              <span>Click any transaction to inspect thermal voucher</span>
+            </div>
+
+            <div className="space-y-2.5">
+              {filteredData.map((s) => {
+                const isSelected = selectedSale?.id === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => setSelectedSale(s)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                      isSelected
+                        ? 'bg-blue-50/40 border-blue-600 shadow-sm ring-1 ring-blue-500/20'
+                        : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          s.product === 'Petrol'
+                            ? 'bg-amber-100/70 text-amber-700'
+                            : s.product === 'Diesel'
+                            ? 'bg-blue-100/70 text-blue-700'
+                            : 'bg-purple-100/70 text-purple-700'
+                        }`}
+                      >
+                        <Fuel className="w-5 h-5" />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2 py-0.2 rounded-md">
+                            {s.receiptNumber}
+                          </span>
+                          <span className="text-xs font-bold text-gray-900">{s.customer}</span>
+                          {s.vehiclePlate && s.vehiclePlate !== 'N/A' && (
+                            <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded">
+                              {s.vehiclePlate}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-gray-500 flex items-center gap-2">
+                          <span className="font-semibold">{s.pump}</span>
+                          <span>•</span>
+                          <span>{s.nozzle}</span>
+                          <span>•</span>
+                          <span>{s.time}</span>
+                          <span>•</span>
+                          <span className="text-gray-400">by {s.cashier}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="font-mono font-black text-sm text-gray-900">
+                        ${s.total.toFixed(2)}
+                      </div>
+                      <div className="text-[11px] font-mono font-semibold text-gray-500">
+                        {s.litres.toFixed(2)} L @ ${s.rate.toFixed(2)}
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.2 rounded-md mt-1 ${
+                          s.method === 'CASH'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : s.method === 'CARD'
+                            ? 'bg-blue-50 text-blue-700'
+                            : s.method === 'MOBILE_MONEY'
+                            ? 'bg-teal-50 text-teal-700'
+                            : 'bg-purple-50 text-purple-700'
+                        }`}
+                      >
+                        {s.method.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredData.length === 0 && (
+                <div className="p-8 text-center bg-white rounded-2xl border border-gray-100 text-gray-400 text-xs">
+                  No sales transactions matched your filter parameters.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right 5 Cols: Sticky ESC/POS Thermal Paper Receipt Cockpit */}
+          <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
+            {selectedSale ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Printer className="w-4 h-4 text-blue-600" />
+                    80mm Thermal Receipt Telemetry
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3 py-1 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print Slip</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Simulated ESC/POS Thermal Paper */}
+                <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/80 font-mono text-gray-800 space-y-3 text-[11px] shadow-2xs">
+                  {/* Forecourt Header */}
+                  <div className="text-center space-y-0.5 border-b border-dashed border-gray-300 pb-3">
+                    <div className="font-black text-sm tracking-widest text-gray-900">FUELPRO ENERGY FORECOURT</div>
+                    <div className="text-[10px] text-gray-500">KM4 Roundabout Central • Mogadishu</div>
+                    <div className="text-[10px] text-gray-500">Tel: +252 61 555-1111 • Tax ID: SO-992-104</div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="space-y-1 text-[10px] text-gray-600 border-b border-dashed border-gray-300 pb-3">
+                    <div className="flex justify-between">
+                      <span>VOUCHER:</span>
+                      <span className="font-bold text-gray-900">{selectedSale.receiptNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DATE/TIME:</span>
+                      <span>{selectedSale.time}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>OPERATOR:</span>
+                      <span className="font-semibold text-gray-900">{selectedSale.cashier}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DISPENSER / NOZZLE:</span>
+                      <span className="font-semibold text-gray-900">{selectedSale.pump} • {selectedSale.nozzle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>CUSTOMER:</span>
+                      <span className="font-semibold text-gray-900 truncate max-w-[150px]">{selectedSale.customer}</span>
+                    </div>
+                    {selectedSale.vehiclePlate && (
+                      <div className="flex justify-between">
+                        <span>VEHICLE REG:</span>
+                        <span className="font-bold text-blue-700">{selectedSale.vehiclePlate}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fuel Grade & Liters */}
+                  <div className="space-y-1.5 py-1 border-b border-dashed border-gray-300 pb-3">
+                    <div className="font-bold text-gray-900 text-xs flex justify-between">
+                      <span>{selectedSale.product} Unleaded / AGO</span>
+                      <span>${selectedSale.rate.toFixed(2)}/L</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700 text-xs">
+                      <span>Volume Lifted:</span>
+                      <span className="font-black">{selectedSale.litres.toFixed(2)} Liters</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>Starting Totalizer:</span>
+                      <span>{selectedSale.meterStart.toFixed(2)} L</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>Ending Totalizer:</span>
+                      <span>{selectedSale.meterEnd.toFixed(2)} L</span>
+                    </div>
+                  </div>
+
+                  {/* Total & Tender */}
+                  <div className="space-y-1 pt-1 border-b border-dashed border-gray-300 pb-3">
+                    <div className="flex justify-between text-xs font-black text-gray-900">
+                      <span>NET AMOUNT:</span>
+                      <span className="text-base text-blue-700">${selectedSale.total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-600">
+                      <span>TENDER METHOD:</span>
+                      <span className="font-bold uppercase text-gray-900">{selectedSale.method}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-emerald-700 font-bold">
+                      <span>SETTLEMENT STATUS:</span>
+                      <span>{selectedSale.status} (VERIFIED)</span>
+                    </div>
+                  </div>
+
+                  {/* Barcode Strip */}
+                  <div className="pt-2 text-center space-y-1">
+                    <div className="h-8 bg-gray-900/10 rounded flex items-center justify-center font-mono text-[9px] tracking-widest text-gray-500">
+                      ||| | |||| | ||| |||| | || ||| |||| |
+                    </div>
+                    <div className="text-[9px] text-gray-400">Electronic Custody Transfer Verified</div>
+                  </div>
+                </div>
+
+                {/* Anti-Fraud Telemetry Strip */}
+                <div className="p-3 bg-gray-50 rounded-2xl text-[11px] text-gray-600 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Weights & Measures Verification</span>
+                  </div>
+                  <div className="text-[10px] text-gray-500">
+                    Flowmeter pulse calibration verified against Veeder-Root electronic custody transfer log.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl border border-gray-100 p-8 text-center text-gray-400 text-xs">
+                Select a sale transaction to inspect thermal voucher telemetry.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 5. VIEW MODE 2: MASTER AUDIT LEDGER (TanStack Full Width)              */}
+      {/* ===================================================================== */}
+      {viewMode === 'TABLE' && (
+        <div className="space-y-3">
+          <DataTable
+            columns={columns}
+            data={filteredData}
+            searchPlaceholder="Filter transactions in master ledger..."
+            onExportCsv={handleExportCsv}
+            pageSize={10}
+            emptyMessage="No sales transactions matched your filter criteria."
+          />
+        </div>
+      )}
+
+      {/* Modal: Receipt Pop-up (when clicking print from table) */}
+      {isReceiptModalOpen && selectedSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <span className="font-bold text-gray-900 text-sm">ESC/POS Slip</span>
+              <button
+                onClick={() => setIsReceiptModalOpen(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Paper Thermal Receipt Simulator */}
-            <div className="p-6 bg-gray-50 flex justify-center">
-              <div className="w-full max-w-xs bg-white p-6 shadow-sm border border-gray-200 font-mono text-xs text-gray-800 space-y-3 rounded-md">
-                <div className="text-center space-y-1">
-                  <div className="font-black text-sm tracking-wider">*** FUELPRO PETROLEUM ***</div>
-                  <div className="text-[10px] text-gray-500">Mogadishu Central Forecourt • St. 21</div>
-                  <div className="text-[10px] text-gray-500">Tax ID: SO-VAT-89102-F</div>
-                  <div className="text-[10px] text-gray-400">Tel: +252 61 555-7788</div>
-                </div>
-
-                <div className="border-t border-dashed border-gray-300 pt-2 space-y-1 text-[11px]">
-                  <div className="flex justify-between">
-                    <span>Receipt:</span>
-                    <span className="font-bold">{selectedSale.receiptNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Date/Time:</span>
-                    <span>{selectedSale.time}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cashier:</span>
-                    <span>{selectedSale.cashier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Dispenser:</span>
-                    <span>{selectedSale.pump} ({selectedSale.nozzle})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Vehicle:</span>
-                    <span>{selectedSale.vehiclePlate || 'N/A'}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-dashed border-gray-300 pt-2 space-y-1 text-[11px]">
-                  <div className="flex justify-between">
-                    <span>Opening Meter:</span>
-                    <span>{selectedSale.meterStart.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Closing Meter:</span>
-                    <span>{selectedSale.meterEnd.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-b border-dashed border-gray-300 py-2 space-y-1.5 text-xs">
-                  <div className="flex justify-between font-bold">
-                    <span>{selectedSale.product}</span>
-                    <span>${selectedSale.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-gray-500 pl-2">
-                    <span>{selectedSale.litres.toFixed(2)} L @ ${selectedSale.rate.toFixed(2)}/L</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-sm">
-                    <span>TOTAL PAID:</span>
-                    <span className="text-emerald-700">${selectedSale.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-gray-500">
-                    <span>Payment Method:</span>
-                    <span className="font-semibold">{selectedSale.method}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-gray-500">
-                    <span>Customer:</span>
-                    <span className="truncate max-w-[150px]">{selectedSale.customer}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-dashed border-gray-300 pt-3 text-center space-y-1 text-[10px] text-gray-500">
-                  <div className="font-bold">THANK YOU FOR CHOOSING FUELPRO!</div>
-                  <div>Safe travels • Retain for company audit</div>
-                  <div className="pt-1 font-mono text-[9px] text-gray-400">BARCODE: *{selectedSale.receiptNumber}*</div>
-                </div>
+            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 font-mono text-xs space-y-2">
+              <div className="text-center font-bold text-gray-900">{selectedSale.receiptNumber}</div>
+              <div className="flex justify-between">
+                <span>Total:</span>
+                <span className="font-black text-blue-700">${selectedSale.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Volume:</span>
+                <span>{selectedSale.litres} L</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tender:</span>
+                <span>{selectedSale.method}</span>
               </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-end gap-2">
+            <div className="flex justify-end gap-2">
               <button
-                onClick={() => setIsReceiptOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                onClick={() => setIsReceiptModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
               >
                 Close
               </button>
               <button
                 onClick={() => {
                   window.print();
+                  setIsReceiptModalOpen(false);
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs"
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
               >
-                <Printer className="w-4 h-4" />
-                <span>Print Thermal Slip</span>
+                Print
               </button>
             </div>
           </div>

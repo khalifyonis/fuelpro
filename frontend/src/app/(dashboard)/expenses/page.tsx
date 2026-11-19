@@ -22,6 +22,7 @@ import {
   Zap,
   Check,
   Ban,
+  Download,
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -262,60 +263,198 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-rose-100/70 text-rose-700 flex items-center justify-center shrink-0 shadow-xs">
-            <Wallet className="w-6 h-6" />
+      {/* ===================================================================== */}
+      {/* 1. HEADER ROW (Matches Customers & Tanks Visual Architecture)          */}
+      {/* ===================================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 shrink-0">
+            <Wallet className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Station Operating Expenses (OPEX) & Petty Cash
-            </h1>
-            <p className="text-xs text-gray-500 font-medium">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 leading-tight">
+                Operating Expenses (OPEX) & Petty Cash
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wider">
+                Enterprise Forecourt v2.4
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
               Voucher submission, manager approval workflow, monthly budget burn, and petty cash reconciliation.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = ['Voucher #,Category,Description,Amount ($),Date,Vendor,Submitted By,Approved By,Payment Method,Status'];
+              const rows = expenses.map(
+                (e) => `"${e.voucherNumber}","${e.category}","${e.description}",${e.amount},"${e.date}","${e.vendor}","${e.submittedBy}","${e.approvedBy}","${e.paymentMethod}","${e.status}"`
+              );
+              const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `FuelPro_Expenses_Audit_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-gray-500" />
+            <span>Export CSV</span>
+          </button>
+
           <Link
             href="/expenses/new"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Submit Expense Voucher</span>
           </Link>
         </div>
       </div>
 
-      {/* Monthly Budget Burn & Pipeline Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="text-[11px] font-semibold text-gray-400 uppercase">Monthly OPEX Budget</div>
-          <div className="text-xl font-black text-gray-900 mt-1">$10,000.00</div>
-          <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
-            <div className="bg-blue-600 h-full rounded-full" style={{ width: '21.3%' }} />
+      {/* ===================================================================== */}
+      {/* 2. 4 FORECOURT EXPENSE KPI CARDS (With Sparkline Waves)               */}
+      {/* ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Monthly OPEX Budget */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Monthly OPEX Budget
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">$10,000</span>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded-md">
+                  21.3% Spent
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                $2,131 spent of $10,000 cap
+              </span>
+            </div>
           </div>
-          <div className="text-[10px] text-gray-500 mt-1">21.3% consumed ($2,131 spent)</div>
+          {/* Blue Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-blue-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 24C12 24 16 12 26 12C36 12 40 20 50 14C56 9 62 4 68 3"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="text-[11px] font-semibold text-amber-700 uppercase">Pending Approval</div>
-          <div className="text-xl font-black text-amber-800 mt-1">$1,250.00</div>
-          <div className="text-[10px] text-amber-600 font-bold mt-1">1 voucher awaiting manager</div>
+        {/* Card 2: Pending Approval Pipeline */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Pending Manager Approval
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-amber-700 font-mono">$1,250.00</span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded-md">
+                  1 Voucher
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Awaiting controller sign-off
+              </span>
+            </div>
+          </div>
+          {/* Amber Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-amber-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 20C10 20 18 6 28 6C38 6 44 24 54 18C60 14 64 6 68 4"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="text-[11px] font-semibold text-emerald-700 uppercase">Approved & Paid</div>
-          <div className="text-xl font-black text-emerald-800 mt-1">$881.00</div>
-          <div className="text-[10px] text-emerald-600 font-bold mt-1">4 vouchers settled</div>
+        {/* Card 3: Settled & Paid Vouchers */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Approved & Paid
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-emerald-700 font-mono">$881.00</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                  4 Paid
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Reconciled with petty cash
+              </span>
+            </div>
+          </div>
+          {/* Emerald Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-emerald-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 18C12 18 16 26 26 22C36 18 42 8 52 8C58 8 62 14 68 12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="text-[11px] font-semibold text-gray-400 uppercase">Petty Cash Strongbox</div>
-          <div className="text-xl font-black text-gray-900 mt-1">$624.00</div>
-          <div className="text-[10px] text-gray-500 mt-1">Reimbursed weekly</div>
+        {/* Card 4: Petty Cash Strongbox */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex items-center justify-between relative overflow-hidden">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <Wallet className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-gray-400 block tracking-tight">
+                Petty Cash Strongbox
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-black text-gray-900 font-mono">$624.00</span>
+                <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded-md">
+                  Vault OK
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 block mt-0.5">
+                Weekly manager replenishment
+              </span>
+            </div>
+          </div>
+          {/* Rose Wave Graphic */}
+          <div className="hidden sm:block shrink-0 pr-1">
+            <svg className="w-14 h-8 text-rose-500" viewBox="0 0 70 30" fill="none">
+              <path
+                d="M2 10C14 10 20 22 30 20C40 18 46 6 56 6C62 6 64 12 68 10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
