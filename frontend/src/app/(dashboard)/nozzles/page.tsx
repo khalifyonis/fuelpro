@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Gauge,
   Plus,
@@ -175,14 +176,13 @@ export default function NozzlesPage() {
             Forecourt electronic totalizers, Weights & Measures verification, meter calibration audits, and flow rate performance.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
+        <Link
+          href="/nozzles/new"
           className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>Add Dispenser Nozzle</span>
-        </button>
+        </Link>
       </div>
 
       {/* KPI Stats */}

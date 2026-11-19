@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   Receipt,
+  Plus,
   Search,
   Download,
   Printer,
@@ -448,7 +450,7 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* Live Metrics Summary Pills */}
+        {/* Live Metrics Summary Pills & New Action */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-200/80 shadow-2xs text-xs">
             <TrendingUp className="w-4 h-4 text-emerald-600" />
@@ -460,6 +462,13 @@ export default function SalesPage() {
             <span className="text-gray-500 font-medium">Throughput:</span>
             <strong className="text-gray-900 font-bold">{totalVolume.toFixed(1)} L</strong>
           </div>
+          <Link
+            href="/sales/new"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Sale Dispatch</span>
+          </Link>
         </div>
       </div>
 

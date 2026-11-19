@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   Calculator,
@@ -228,13 +229,13 @@ export default function AccountingPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsJournalModalOpen(true)}
+          <Link
+            href="/accounting/new"
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Post Journal Voucher</span>
-          </button>
+          </Link>
         </div>
       </div>
 

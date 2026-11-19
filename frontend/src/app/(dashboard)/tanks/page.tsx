@@ -609,16 +609,14 @@ export default function TanksPage() {
             {/* Top row: Status Badge & 3-Dots */}
             <div className="flex items-center justify-between mb-2">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                  tank.status === 'Healthy'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-amber-50 text-amber-700'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${tank.status === 'Healthy'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-amber-50 text-amber-700'
+                  }`}
               >
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    tank.status === 'Healthy' ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}
+                  className={`w-1.5 h-1.5 rounded-full ${tank.status === 'Healthy' ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
                 />
                 {tank.status}
               </span>
@@ -660,13 +658,12 @@ export default function TanksPage() {
                 {/* Horizontal Progress Liquid Gauge */}
                 <div className="w-36 bg-gray-100 h-2 rounded-full overflow-hidden mt-2 relative">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      tank.themeColor === 'blue'
-                        ? 'bg-blue-600'
-                        : tank.themeColor === 'green'
+                    className={`h-full rounded-full transition-all duration-500 ${tank.themeColor === 'blue'
+                      ? 'bg-blue-600'
+                      : tank.themeColor === 'green'
                         ? 'bg-emerald-500'
                         : 'bg-amber-500'
-                    }`}
+                      }`}
                     style={{ width: `${tank.percentage}%` }}
                   />
                 </div>
@@ -695,8 +692,8 @@ export default function TanksPage() {
                           tank.themeColor === 'blue'
                             ? '#3b82f6'
                             : tank.themeColor === 'green'
-                            ? '#10b981'
-                            : '#f59e0b'
+                              ? '#10b981'
+                              : '#f59e0b'
                         }
                       />
                       <stop
@@ -705,8 +702,8 @@ export default function TanksPage() {
                           tank.themeColor === 'blue'
                             ? '#1d4ed8'
                             : tank.themeColor === 'green'
-                            ? '#047857'
-                            : '#d97706'
+                              ? '#047857'
+                              : '#d97706'
                         }
                       />
                     </linearGradient>
@@ -826,11 +823,10 @@ export default function TanksPage() {
                 key={period}
                 type="button"
                 onClick={() => setFilterPeriod(period)}
-                className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                  filterPeriod === period
-                    ? 'bg-blue-600 text-white font-bold shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900 font-medium'
-                }`}
+                className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer ${filterPeriod === period
+                  ? 'bg-blue-600 text-white font-bold shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900 font-medium'
+                  }`}
               >
                 {period}
               </button>
@@ -886,10 +882,9 @@ export default function TanksPage() {
                   {/* Grade Pill */}
                   <td className="py-3.5 px-3">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
-                        row.grade === 'Petrol'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                          : row.grade === 'Diesel'
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[10px] ${row.grade === 'Petrol'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                        : row.grade === 'Diesel'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
                           : 'bg-purple-50 text-purple-700 border border-purple-200/60'
                         }`}
@@ -924,11 +919,10 @@ export default function TanksPage() {
                   {/* Book Variance */}
                   <td className="py-3.5 px-3">
                     <span
-                      className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] ${
-                        row.bookVarianceLitres < 0
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      }`}
+                      className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] ${row.bookVarianceLitres < 0
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                        }`}
                     >
                       {row.bookVarianceDisplay}
                     </span>
@@ -942,11 +936,10 @@ export default function TanksPage() {
                   {/* Compliance Badge with Checkmark */}
                   <td className="py-3.5 px-4 text-center">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        row.compliance === 'Passed'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-rose-50 text-rose-700'
-                      }`}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${row.compliance === 'Passed'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-rose-50 text-rose-700'
+                        }`}
                     >
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                       {row.compliance}
@@ -986,33 +979,30 @@ export default function TanksPage() {
               <button
                 type="button"
                 onClick={() => setActiveTankTab('SPEC')}
-                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${
-                  activeTankTab === 'SPEC'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                    : 'border-transparent text-gray-500'
-                }`}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${activeTankTab === 'SPEC'
+                  ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
+                  : 'border-transparent text-gray-500'
+                  }`}
               >
                 1. Tank Asset Spec
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTankTab('ATG')}
-                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${
-                  activeTankTab === 'ATG'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                    : 'border-transparent text-gray-500'
-                }`}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${activeTankTab === 'ATG'
+                  ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
+                  : 'border-transparent text-gray-500'
+                  }`}
               >
                 2. ATG Telemetry & Probe
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTankTab('SAFETY')}
-                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${
-                  activeTankTab === 'SAFETY'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                    : 'border-transparent text-gray-500'
-                }`}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${activeTankTab === 'SAFETY'
+                  ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
+                  : 'border-transparent text-gray-500'
+                  }`}
               >
                 3. Alarms & Safety Limits
               </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Building2,
   Plus,
@@ -265,22 +266,20 @@ export default function SuppliersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setIsAddPOOpen(true)}
+          <Link
+            href="/purchase-orders/new"
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all"
           >
             <ShoppingCart className="w-4 h-4" />
             <span>Create Purchase Order</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsAddSupplierOpen(true)}
+          </Link>
+          <Link
+            href="/suppliers/new"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Register Supplier</span>
-          </button>
+          </Link>
         </div>
       </div>
 

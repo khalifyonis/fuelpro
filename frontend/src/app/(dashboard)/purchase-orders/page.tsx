@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   ShoppingCart,
   Plus,
@@ -146,14 +147,13 @@ export default function PurchaseOrdersPage() {
             Requisition bulk road tankers from partner refineries with contract pricing and expected delivery tracking.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAddPOOpen(true)}
+        <Link
+          href="/purchase-orders/new"
           className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>New Purchase Order</span>
-        </button>
+        </Link>
       </div>
 
       {/* KPI Ribbon */}
